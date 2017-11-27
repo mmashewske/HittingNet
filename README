@@ -1,7 +1,0 @@
-This is a program to create combos for BigBand in the game Skullgirls.
-
-run comboGenerator.py to generate.
-
-More parameters will be added later.
-
-networkx library required.
