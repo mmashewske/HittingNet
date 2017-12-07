@@ -46,14 +46,16 @@ def commandType(command):
     '''Takes a string representing a command input and returns an integer representing its type.
     '''
     if isBlockbuster(command):
-        return 4
+        return 5
     elif isSpecial(command):
-        return 3
+        return 4
     elif 'p' in command or 'l' in command:
-        return 2
+        return 3
     elif 'o' in command or 'k' in command:
-        return 1
-    return 0
+        return 2
+    elif "(i+j)" in command:
+        return 0
+    return 1
 
 def isLink(move1, move2):
     '''Checks if the startup frames of move2 are less than the on-hit frames of move1.
@@ -66,6 +68,8 @@ def isLink(move1, move2):
     except:
         if(val1 == "s"):
             return 0
+        elif(val1 == "o"):
+            return 3
         else:
             return 2
     
@@ -79,7 +83,7 @@ def makeGraph():
     graph = nx.DiGraph()
     nodeDict = {}
     for row in rows:
-        values = row.split(',')
+        values = row.lower().split(',')
         if len(values) < 12:
             continue
             
@@ -91,7 +95,7 @@ def makeGraph():
                 if graph.nodes[node]['cancelLevel'] < graph.nodes[otherNode]['cancelLevel']:
                     graph.add_edge(node, otherNode, weight=0)
                 link = isLink(graph.nodes[node],graph.nodes[otherNode])
-                if link:
+                if link and graph.nodes[node]['cancelLevel'] != 0:
                     graph.add_edge(node, otherNode, weight=int(link))
     random_node = choice(graph.nodes())
     #print(random_node)

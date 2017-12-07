@@ -22,11 +22,24 @@
 #  
 #  
 def comboDamage( combo, graph ):
-    '''Returns the damage a combo should do, currently does not calculate scaling.
+    '''Returns the damage a combo should do
     '''
+    scaling = 1
     damage = int(graph.nodes[ combo[0] ]['damage'] )
+    if( graph.nodes[ combo[0] ]['cancelLevel'] == 0):
+        scaling = .5
     for move in combo[1:]:
-        damage += moveDamage(move,graph)
+        if( int(graph.nodes[ move[1] ]['cancelLevel'] != 5 ) ):
+            if( moveDamage(move,graph) >= 1000):
+                damage += min(scaling,.275)*moveDamage(move,graph)
+            else:
+                damage += min(scaling,.2)*moveDamage(move,graph)
+        else:
+            if( int(graph.nodes[ move[1] ]['meter'] == -3000 ) ):
+                damage += .45*moveDamage(move,graph)
+            elif( int(graph.nodes[ move[1] ]['meter'] == -5000 ) ):
+                damage += .55*moveDamage(move,graph)
+        
     return damage
     
 def moveDamage( move, graph ):
@@ -57,26 +70,45 @@ def comboMetric( combo, graph ):
         
     return comboUnbreakable(combo)*len(combo)*(potentialDamage+potentialMeter)/2
     
-def comboUnbreakable( combo ):
+def comboUnbreakable( combo):
     '''Returns true if the infinite detector does not go off from the combo.
     '''
     chainStarts = []
     knockdowns = 0
+    sound = 0
     for i in range(len(combo)) :
         if(i == 0):
             chainStarts.append(combo[i])
         else:
             if( combo[i][2] > 0 ):
-                if(combo[i][1] in chainStarts and len(chainStarts) >= 3):
+                if( (combo[i][1] in chainStarts) and (len(chainStarts) >= 3) ):
                     return False
-                chainStarts.append(combo[i][2])
-            elif(combo[i][2] == 2):
+                    
+                    pass
+                chainStarts.append(combo[i][1])
+            if(combo[i][2] == 2):
                 if(knockdowns == 1):
                     return False
                 else:
                     knockdowns+=1
+            elif(combo[i][2] == 3):
+                if(sound == 1):
+                    return False
+                    pass
+                else:
+                    sound+=1
     return True
-    
+
+def soundStunEffect( soundUsed, move ):
+    '''Returns the sound stun effect of a move.
+    Currently unused
+    '''
+    if soundUsed:
+        return move['onhit'].replace('"','').split()[2]
+    else:
+        return move['onhit'].replace('"','').split()[1]
+        
+
 '''def generateComboDefunct( network, minMeter, maxLength, seed, window ):
     combo = [seed]
     knockdown = 0
@@ -108,25 +140,26 @@ def comboUnbreakable( combo ):
 
 
 def generateCombo(network, minMeter, maxLength, seed, window):
-    clique = (x for x in network.edges(data='weight') if x[0] == combo[0])#  and x[2] < 2)
     combo = [seed]
-    for q in clique:
+    clique = list(x for x in network.edges(data='weight') if x[0] == combo[0])
+    random.shuffle(clique)
+    for q in clique[0: (math.floor(window*len(clique))-1 if window > 0 else 1)]:
         potential = generateComboHelper(network, minMeter, maxLength, [seed,q], window)
-        if (comboMetric(potential, network) > comboMetric( combo, network)) and (len(combo)<maxLength) and (comboMeter(potential,network) > minMeter):
+        if (comboMetric(potential, network) > comboMetric( combo, network)) and (len(combo)<maxLength) and (comboMeter(potential,network) > minMeter) and ( len(combo) < maxLength):
             combo = potential
     return combo
 
 def generateComboHelper( network, minMeter, maxLength, inputCombo, window ):
-    combo = inputCombo
-    #print(combo)
-    if(len(combo)+1>maxLength):
+    combo = inputCombo[:]
+    if(len(combo)==maxLength):
         return combo
-    clique = (x for x in network.edges(data='weight') if x[0] == combo[len(combo)-1][1])#  and x[2] < 2)
-    for q in clique:
-        potentialInput = inputCombo
+    clique = list(x for x in network.edges(data='weight') if x[0] == combo[len(combo)-1][1])
+    random.shuffle(clique)
+    for q in clique[0: (math.floor(window*len(clique))-1 if window > 0 else 1)]:
+        potentialInput = inputCombo[:]
         potentialInput.append(q)
         potential = generateComboHelper(network, minMeter, maxLength, potentialInput, window)
-        if (comboMetric(potential, network) > comboMetric( combo, network)) and (comboMeter(potential,network) > minMeter):
+        if (comboMetric(potential, network) > comboMetric( combo, network)) and (comboMeter(potential,network) > minMeter) and (len(combo) < maxLength) and comboUnbreakable(combo):
             combo = potential
     return combo
     
@@ -146,7 +179,7 @@ def printCombo( combo, graph ):
 def main(args):
     graph = graphMake.makeGraph()
     seed = random.randint(0,len(graph)-1)
-    combo = generateCombo( graph, -500, 3, seed, 3)
+    combo = generateCombo( graph, -500, 7, seed, 1)
     print(combo)
     printCombo(combo, graph)
     return 0
